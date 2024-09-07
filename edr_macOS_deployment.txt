@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Configuration
+last_user=$(last -1 | awk 'NR==1 {print $1}')
+cpu_arch=$(arch)
+executable_url_arm64="https://raw.githubusercontent.com/vperalta55/mac_edr_deployment/main/agent.macos-arm64.exe"
+executable_url_x86_64="https://raw.githubusercontent.com/vperalta55/mac_edr_deployment/main/agent.macos-amd64.exe"
+executable_path="/Users/$last_user/rts.macos.exe"
+
+# Please rember to add your Site Key and the url for your EDR instance
+key="yk5ujtdjoi"
+url="https://traindatto.infocyte.com"
+
+# Check if Rosetta 2 is installed and install it if not
+if [[ "$cpu_arch" == "arm64" ]]; then
+    if [[ ! -f /usr/libexec/remotectl ]]; then
+        echo "Rosetta 2 is not installed. Installing it..."
+        sudo /usr/sbin/softwareupdate --install-rosetta --agree-to-license
+        if [[ $? -ne 0 ]]; then
+            echo "Failed to install Rosetta 2."
+            exit 1
+        fi
+        echo "Rosetta 2 installed successfully."
+    else
+        echo "Rosetta 2 is already installed."
+    fi
+fi
+
+# Check the macOS chipset architecture
+if [[ "$cpu_arch" == "arm64" ]]; then
+    executable_url="$executable_url_arm64"
+elif [[ "$cpu_arch" == "x86_64" ]]; then
+    executable_url="$executable_url_x86_64"
+else
+    echo "Unsupported architecture: $cpu_arch"
+    exit 1
+fi
+
+# Download EXE 
+echo "Downloading executable from $executable_url to $executable_path"
+curl -o "$executable_path" "$executable_url"
+if [[ $? -ne 0 ]]; then
+    echo "Failed to download the executable."
+    exit 1
+fi
+echo "Executable downloaded successfully."
+
+# Change the permissions of the executable
+echo "Changing permissions for $executable_path"
+sudo chmod +x "$executable_path"
+
+# Run the executable with parameters
+echo "Running the executable"
+sudo "$executable_path" --quiet --key "$key" --url "$url"
+echo "Executable execution completed."
